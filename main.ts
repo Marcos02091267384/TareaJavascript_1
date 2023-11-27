@@ -5,16 +5,16 @@
 
 import { setServers } from "dns";
 
-// const init = require('./logica/inicializarBot.ts');
-// //const fun = require("./logica/Funciones.js");
-// init.inicializarBot();
+const init = require('./logica/inicializarBot.ts');
+//const fun = require("./logica/Funciones.js");
+init.inicializarBot();
 
 
-const {BDConectar}=require('./logica/conexion');
+// const {BDConectar}=require('./logica/conexion');
 
-const con=BDConectar('TiendaOnline');
-con.abrir();
-const respuesta:any=con.crearUsuario(2,'Pedro Farrada','1234');
-console.log(respuesta);
-con.cerrar();
+// const con=BDConectar('TiendaOnline');
+// con.abrir();
+// const respuesta:any=con.crearUsuario(2,'Pedro Farrada','1234');
+// console.log(respuesta);
+// con.cerrar();
 
