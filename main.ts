@@ -3,18 +3,15 @@
 //? Algo que debo quitar o mejorar
 //* Informacion importante
 
-import { setServers } from "dns";
 
 const init = require('./logica/inicializarBot.ts');
-//const fun = require("./logica/Funciones.js");
+import {consulta} from './logica/Funciones';
+consulta();
 init.inicializarBot();
 
 
-// const {BDConectar}=require('./logica/conexion');
-
-// const con=BDConectar('TiendaOnline');
-// con.abrir();
-// const respuesta:any=con.crearUsuario(2,'Pedro Farrada','1234');
-// console.log(respuesta);
-// con.cerrar();
-
+//TODO Tengo que terminar de hacer lo de agregar producto(probar la parte de la query que estaba dando problemas)
+//TODO TEngo que validar que seas usuario y que no estes bloqueado ni eliminado
+//TODO tengo que hacer los metodos para cambiar los valores de la basedatos como bloquear usuario y eliminar cuenta y eso
+//TODO Trngo que hacer lo de comprar producto y enviarrecivo
+//todo crear comando de administradores y comando de modificar y ver direccion
