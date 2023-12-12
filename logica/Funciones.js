@@ -36,11 +36,79 @@ function selector(users, ctx) {
             verProductos(users, ctx, pageNumber);
             break;
         case "cancelar":
+            const index = users.indexOf(us);
+            users.splice(index, 1);
+            break;
         case "ver_productos":
             verProductos(users, ctx, 0)
             break;
         case "clave":
             registrarse(users, ctx);
+            break;
+        case "eliminarse":
+            eliminarse(users, ctx);
+            break;
+        case "bloquear":
+            bloquear(users, ctx);
+            break;
+    }
+}
+
+function bloquear(users, ctx) {
+    let us = buscarUsuario(users, ctx);
+    let ban = us.state;
+    switch (ban[1]) {
+        case "nombre":
+            ctx.reply(`Introduzca el nombre del usuario que se va a bloquear`);
+            us.state[1] = 'des';
+            break;
+        case "des":
+            us.usBloq = ctx.message.text.charCodeAt(0) === '@' ? null : ctx.message.text.substring(1, ctx.message.text.length);
+            ctx.reply("Introduzca una explicacion de la falta por la que se le bloquea");
+            us.state[1] = 'conf';
+            break;
+        case "conf":
+            us.usBloqDesc == ctx.message.text;
+            ctx.replyWithHTML(
+                `Esta seguro de bloquear al usuario ${us.usBloq} por la siguiente causa:\n ${us.usBloqDesc}`,
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: 'Sí', callback_data: 'aceptar bloqueo' },
+                                { text: 'No', callback_data: 'rechazar bloqueo' }
+                            ]
+                        ]
+                    }
+                }
+            );
+            break;
+    }
+}
+
+function eliminarse(users, ctx) {
+    let us = buscarUsuario(users, ctx);
+    let ban = us.state;
+    switch (ban[1]) {
+        case "confirmar":
+            ctx.replyWithHTML(
+                `¿Esta seguro de eliminar su cuenta?`,
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: 'Sí', callback_data: 'eliminar cuenta' },
+                                { text: 'No', callback_data: 'no eliminar cuenta' }
+                            ]
+                        ]
+                    }
+                }
+            );
+            break;
+        case "eliminar":
+            conex.query(`SELECT eliminar_usuario(${ctx.from.id})`).then((resp) => {
+                ctx.reply("Su cuenta ha sido eliminada")
+            });
             break;
     }
 }
@@ -222,7 +290,12 @@ function registrarse(users, ctx) {
             }
             break;
         case "aceptar_clave":
-            conex.query(`Select crear_usuario(${us.id},'${us.username}','${cambiarLetras(us.password)}')`);
+            consulta().query(`Select existe_usuario_eliminado(${ctx.from?.id})`).then(async (res) => {
+                if (!res.rows[0].existe_usuario_eliminado)
+                    conex.query(`Select crear_usuario(${us.id},'${us.username}','${cambiarLetras(us.password)}')`);
+                else
+                    conex.query(`update usuario set clave=${us.password}')`);
+            })
             ctx.reply("Usted ha sido registrado");
             consulta("usuario", us);
             const index = users.indexOf(us);
