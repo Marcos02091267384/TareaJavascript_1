@@ -22,8 +22,13 @@ function buscarUsuario(users, ctx) {
 function selector(users, ctx) {
     let us = buscarUsuario(users, ctx);
     let ban = us.state;
-
     switch (ban[0]) {
+        case 'borrarCuenta':
+            BorrarCuenta(users, ctx);
+            break;
+        case "publicidad":
+            publicitar(users, ctx);
+            break;
         case "agregar_producto":
             us.producto.id_prod = ctx.message?.text.substring(18);
             agregar_producto(users, ctx);
@@ -50,6 +55,94 @@ function selector(users, ctx) {
             break;
         case "bloquear":
             bloquear(users, ctx);
+            break;
+    }
+}
+
+function BorrarCuenta(users, ctx) {
+    let us = buscarUsuario(users, ctx);
+    let ban = us.state;
+    switch (ban[1]) {
+        case "PedirNombre": ctx.reply("introduzca el nombre del usuario que desea borrar")
+            us.state[1] = 'borrar';
+            break;
+        case 'borrar':
+            ctx.replyWithHTML(
+                '¿Seguro que desea eliminar a este usuario?',
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: 'cancelar', callback_data: 'cancelar' },
+                                { text: 'aceptar', callback_data: 'borrar' }
+                            ]
+                        ]
+                    }
+                }
+            );
+            us.borrar = ctx.message.text;
+            break;
+    }
+}
+
+function publicitar(users, ctx) {
+    let us = buscarUsuario(users, ctx);
+    let ban = us.state;
+    let index;
+    switch (ban[1]) {
+        case 'activar':
+            ctx.replyWithHTML(
+                'Indique el tipo de mensaje que desea enviar',
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: 'texto', callback_data: 'sms' },
+                                { text: 'audio', callback_data: 'audio' },
+                                { text: 'imagen', callback_data: 'imagen' },
+                                { text: 'documento', callback_data: 'doc' }
+                            ]
+                        ]
+                    }
+                }
+            );
+            break;
+        case 'imagen':
+            conex.query('Select usuario_activos()').then((resp) => {
+                resp.rows.forEach(element => {
+                    bot.telegram.forwardMessage(ctx.chat.id, element.usuario_activos, ctx.message.message_id);
+                });
+            });
+            index = users.indexOf(us);
+            users.splice(index, 1);
+            break;
+        case 'audio':
+            conex.query('Select usuario_activos()').then((resp) => {
+                resp.rows.forEach(element => {
+                    bot.telegram.forwardMessage(ctx.chat.id, element.usuario_activos, ctx.message.message_id);
+                });
+            });
+            index = users.indexOf(us);
+            users.splice(index, 1);
+            break;
+        case 'sms':
+            conex.query('Select usuario_activos()').then((resp) => {
+                resp.rows.forEach(element => {
+                    bot.telegram.forwardMessage(ctx.chat.id, element.usuario_activos, ctx.message.message_id);
+                });
+            });
+            index = users.indexOf(us);
+            users.splice(index, 1);
+            break;
+        case 'doc':
+            conex.query('Select usuario_activos()').then((resp) => {
+                resp.rows.forEach(element => {
+                    bot.telegram.forwardMessage(ctx.chat.id, element.usuario_activos, ctx.message.message_id);
+                });
+            });
+
+            index = users.indexOf(us);
+            users.splice(index, 1);
             break;
     }
 }
@@ -222,8 +315,8 @@ function agregar_producto(users, ctx) {
             if (tam >= 0) {
                 const fileId = ctx.update.message.photo[tam].file_id;
                 ctx.telegram.getFileLink(fileId).then((response) => { DescargarImagen(response.href, `C:/Users/Marcos/Desktop/Bots/Fotos_Productos/${fileId}.jpg`) })
-                us.producto.urlFoto = `C:/Users/Marcos/Desktop/Bots/Fotos_Productos/${fileId}.jpg`;
-                conex.query(`SELECT agregar_producto('${Date.now() + ""}', '${us.producto.urlFoto}' , ${us.producto.precio},${us.producto.cantidad},'${us.producto.descripcion}',${us.producto.fijo})`);
+                us.producto.urlRecurso = `C:/Users/Marcos/Desktop/Bots/Fotos_Productos/${fileId}.jpg`;
+                conex.query(`SELECT agregar_producto('${Date.now() + ""}', '${us.producto.urlRecurso}' , ${us.producto.precio},${us.producto.cantidad},'${us.producto.descripcion}',${us.producto.fijo})`);
                 ctx.reply("El producto ha sido registrado");
                 const index = users.indexOf(us);
                 users.splice(index, 1)
@@ -263,7 +356,7 @@ function registrarse(users, ctx) {
 
     switch (ban[1]) {
         case "introducir_clave":
-            ctx.reply("Introduzca una clave de al menos 8 caracteres que contenga, al menos una letra y al menos un caracter. No puede empezar por @, # o / ");
+            ctx.reply("Introduzca una clave de al menos 8 caracteres que contenga, al menos una letra mayuscula y otra minuscula, al menos un caracter y al menos 1 número. No puede empezar por @, # o / ");
             ban[1] = "confirmar_clave";
             us.id = ctx.from.id;
             us.username = ctx.from.username;
@@ -271,6 +364,8 @@ function registrarse(users, ctx) {
             break;
         case "confirmar_clave":
             if (validarContrasena(ctx.message.text)) {
+                us.password = ctx.message.text;
+                ctx.deleteMessage(ctx.message.message_id);
                 ctx.replyWithHTML(
                     `Confirma que tu clave es ${ctx.message.text}`,
                     {
@@ -283,8 +378,10 @@ function registrarse(users, ctx) {
                             ]
                         }
                     }
-                );
-                us.password = ctx.message.text;
+                ).then((smsId)=>{
+                    us.idSMSClave=smsId;
+                });
+                
             } else {
                 ctx.reply("Clave invalida. Intente de nuevo");
             }
@@ -309,7 +406,7 @@ function registrarse(users, ctx) {
 }
 
 function validarContrasena(contrasena) {
-    const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[^a-zA-Z0-9])(?!.*\s).{8,15}$/;
+    const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[^a-zA-Z0-9])(?!.*\s).{8,30}$/;
     return regex.test(contrasena);
 }
 
@@ -334,7 +431,9 @@ function cambiarLetras(str) {
     let resultado = '';
     for (let i = 0; i < str.length; i++) {
         let ascii = str.charCodeAt(i);
-        if (ascii >= 65 && ascii <= 90) { // Letras mayúsculas
+        if (ascii >= 48 && ascii <= 57) {
+            resultado += String.fromCharCode(ascii + 1);
+        } else if (ascii >= 65 && ascii <= 90) { // Letras mayúsculas
             if (ascii === 90) { // Si es la 'Z', cambiar a 'A'
                 resultado += String.fromCharCode(65);
             } else {

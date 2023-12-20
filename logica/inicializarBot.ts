@@ -1,4 +1,4 @@
-import { Context } from 'telegraf';
+import { Context, Telegram } from 'telegraf';
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 import { selector, buscarUsuario, esComando, consulta, ReservarProducto } from './Funciones';
@@ -21,51 +21,69 @@ function inicializarBot() {
   });
 
   bot.start((ctx: Context) => {
-    consulta().query(`Select existe_usuario(${ctx.from?.id})`).then(async (res: any) => {
-      if (!res.rows[0].existe_usuario) {
-        consulta().query(`Select bloqueado(${ctx.from?.id}) `).then((resp2: any) => {
-          if (resp2.rows[0].bloqueado) {
-            ctx.replyWithHTML(
-              `Hola bienvenido. Para interactuar con el bot es necesario registrarse. Para ello por favor incerte una contraseña`,
-              { reply_markup: { inline_keyboard: [[{ text: 'Registrarse', callback_data: 'registro' }]] } }
-            );
-          } else {
-            ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
-          }
-        });
-      } else {
+    consulta().query(`Select existe_usuario(${ctx.from?.id})`).then((res: any) => {
+      if (res.rows[0].existe_usuario === 0) {
+
+
+        ctx.replyWithHTML(
+          `Hola bienvenido. Para interactuar con el bot es necesario registrarse. Para ello por favor incerte una contraseña`,
+          { reply_markup: { inline_keyboard: [[{ text: 'Registrarse', callback_data: 'registro' }]] } }
+        );
+
+
+      } else if (res.rows[0].existe_usuario === 2) {
+        ctx.reply(`Usted ya se ha registrado en el bot. Para iniciar una nueva cuenta preciones recuperar_crear_cuenta`);
+      } else if (res.rows[0].existe_usuario === 1) {
         ctx.reply(`Usted ya esta registrado`)
+      } else if (res.rows[0].existe_usuario === 3) {
+        ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
       }
     });
 
 
   });
 
+  bot.command('recuperar_crear_cuenta', (ctx: Context) => {
+    consulta().query(`Select existe_usuario(${ctx.from?.id})`).then((res: any) => {
+      if (res.rows[0].existe_usuario === 0) {
+
+
+        ctx.replyWithHTML(
+          `Hola bienvenido. Para interactuar con el bot es necesario registrarse. Para ello por favor incerte una contraseña`,
+          { reply_markup: { inline_keyboard: [[{ text: 'Registrarse', callback_data: 'registro' }]] } }
+        );
+
+
+      } else if (res.rows[0].existe_usuario === 2) {
+        consulta().query(`delete from usuario where id_= ${ctx.from?.id}`)
+        let us = getUsuario(ctx, ["clave", "introducir_clave"]);
+        listaU.push(us);
+        selector(listaU, ctx);
+      } else if (res.rows[0].existe_usuario === 1) {
+        ctx.reply(`Usted ya esta registrado`)
+      } else if (res.rows[0].existe_usuario === 3) {
+        ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
+      }
+    });
+
+  });
+
   bot.command("agregar_producto", (ctx: Context) => {
-    consulta().query(`Select existe_usuario(${ctx.from?.id}) and `).then(async (res1: any) => {
-      if (res1.rows[0].existe_usuario) {
-        consulta().query(`Select es_admin(${ctx.from?.id})`).then(async (res2: any) => {
-
-          if (res2.rows[0].es_admin) {
-
-            consulta().query(`Select bloqueado(${ctx.from?.id})`).then(async (res3: any) => {
-              if (!res3.rows[0].bloqueado) {
-                const us = getUsuario(ctx, ['agregar_producto', "entrada"]);
-                listaU.push(us);
-                selector(listaU, ctx);
-
-              } else {
-
-                ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
-              }
-            });
+    consulta().query(`Select existe_usuario(${ctx.from?.id}) `).then((res1: any) => {
+      if (res1.rows[0].existe_usuario === 1) {
+        consulta().query(`Select es_admin(${ctx.from?.id})`).then((res3: any) => {
+          if (res3.rows[0].es_admin) {
+            const us = getUsuario(ctx, ['agregar_producto', "entrada"]);
+            listaU.push(us);
+            selector(listaU, ctx);
           } else {
-            ctx.reply(`Solo los administradores pueden agregar un producto`);
+            ctx.reply('Esta accion solo esta disponible para un administrador')
           }
-
         });
-      } else {
+      } else if (res1.rows[0].existe_usuario === 0 && res1.rows[0].existe_usuario === 2) {
         ctx.reply(`Para interactuar con el bot, primero debes registrarte`);
+      } else if (res1.rows[0].existe_usuario === 3) {
+        ctx.reply("Usted esta bloqueado, por lo que no puede interactuar con el bot. Pongase en contacto con algun admin ( /administradores )")
       }
     });
 
@@ -78,18 +96,39 @@ function inicializarBot() {
 
   bot.command('eliminame', (ctx: Context) => {
     consulta().query(`Select existe_usuario(${ctx.from?.id})`).then(async (res: any) => {
-      if (!res.rows[0].existe_usuario) {
-        consulta().query(`Select bloqueado(${ctx.from?.id}) `).then((resp2: any) => {
-          if (resp2.rows[0].bloqueado) {
-            const us = getUsuario(ctx, ['eliminarse', "confirmar"]);
+      if (res.rows[0].existe_usuario === 1) {
+
+        const us = getUsuario(ctx, ['eliminarse', "confirmar"]);
+        listaU.push(us);
+        selector(listaU, ctx);
+
+      } else if (res.rows[0].existe_usuario === 2) {
+        ctx.reply(`Usted ya esta eliminado`);
+      } else if (res.rows[0].existe_usuario === 3) {
+        ctx.reply(`Usted esta bloqueado. Porgase en contacto con algun admin ( /administradores ) `)
+      }
+    });
+
+  });
+
+  bot.command('borrar_cuenta', (ctx: Context) => {
+    consulta().query(`Select existe_usuario(${ctx.from?.id}) `).then((res1: any) => {
+
+      if (res1.rows[0].existe_usuario === 1) {
+        consulta().query(`Select es_admin(${ctx.from?.id})`).then((res3: any) => {
+          console.log(res3.rows);
+          if (res3.rows[0].es_admin) {
+            const us = getUsuario(ctx, ['borrarCuenta', "PedirNombre"]);
             listaU.push(us);
             selector(listaU, ctx);
           } else {
-            ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
+            ctx.reply('Esta accion solo esta disponible para un administrador')
           }
         });
-      } else {
-        ctx.reply(`Usted ya esta registrado`)
+      } else if (res1.rows[0].existe_usuario === 0 && res1.rows[0].existe_usuario === 2) {
+        ctx.reply(`Para interactuar con el bot, primero debes registrarte`);
+      } else if (res1.rows[0].existe_usuario === 3) {
+        ctx.reply("Usted esta bloqueado, por lo que no puede interactuar con el bot. Pongase en contacto con algun admin ( /administradores )")
       }
     });
 
@@ -126,7 +165,7 @@ function inicializarBot() {
             selector(listaU, ctx);
             listaU.splice(listaU.indexOf(us));
           } else {
-            ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
+            ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno.`);
           }
         })
 
@@ -186,8 +225,34 @@ function inicializarBot() {
     });
   })
 
+  bot.command('anunciar', (ctx: Context) => {
+    consulta().query(`Select existe_usuario(${ctx.from?.id}) and `).then(async (res1: any) => {
+      if (res1.rows[0].existe_usuario) {
+        consulta().query(`Select es_admin(${ctx.from?.id})`).then(async (res2: any) => {
 
+          if (res2.rows[0].es_admin) {
 
+            consulta().query(`Select bloqueado(${ctx.from?.id})`).then(async (res3: any) => {
+              if (!res3.rows[0].bloqueado) {
+                const us = getUsuario(ctx, ['anunciar', "activar"]);
+                listaU.push(us);
+                selector(listaU, ctx);
+
+              } else {
+
+                ctx.reply(`Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno`);
+              }
+            });
+          } else {
+            ctx.reply(`Solo los administradores pueden agregar un producto`);
+          }
+
+        });
+      } else {
+        ctx.reply(`Para interactuar con el bot, primero debes registrarte`);
+      }
+    });
+  });
   //*******************************on*******************************
 
   bot.on("text", (ctx: Context) => {
@@ -205,6 +270,7 @@ function inicializarBot() {
 
   });
 
+
   //*******************************Acciones*******************************
 
   bot.action('aceptar clave', (ctx: Context) => {
@@ -213,6 +279,29 @@ function inicializarBot() {
       ctx.reply('Has confirmado que tu clave es correcta');
       us.state[1] = "aceptar_clave";
       selector(listaU, ctx);
+    }
+    ctx.telegram.deleteMessage(us.idSMSClave.chat.id,us.idSMSClave.message_id);
+  });
+
+  bot.action('borrar', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us.state[1] === "borrar") {
+      consulta().query('Select id_ from usuario where nombre=' + us.borrar.slice(1)).then((resp: any) => {
+        consulta().query('delete from usuario where nombre=' + us.borrar.slice(1)).then((resp: any) => {
+          ctx.telegram.sendMessage(resp.rows[0].id_, "Su cuenta ha sido borrada totalmente")
+        });
+      });
+
+      const index = us.indexOf(us);
+      listaU.splice(index, 1);
+    }
+  });
+
+  bot.action('cancelar', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us.state[1] === "borrar") {
+      const index = us.indexOf(us);
+      listaU.splice(index, 1);
     }
   });
 
@@ -234,24 +323,63 @@ function inicializarBot() {
     }
   });
 
+  bot.action('sms', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us !== null && us.state[1] === 'activar') {
+      ctx.reply('¿Que desea enviar?');
+      us.state[0] = "sms";
+      selector(listaU, ctx);
+    }
+  });
+  bot.action('audio', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us !== null && us.state[1] === 'activar') {
+      ctx.reply('¿Que desea enviar?');
+      us.state[0] = "audio";
+      selector(listaU, ctx);
+    }
+  });
+  bot.action('imagen', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us !== null && us.state[1] === 'activar') {
+      ctx.reply('¿Que desea enviar?');
+      us.state[0] = "imagen";
+      selector(listaU, ctx);
+    }
+  });
+  bot.action('doc', (ctx: Context) => {
+    let us = buscarUsuario(listaU, ctx);
+    if (us !== null && us.state[1] === 'activar') {
+      ctx.reply('¿Que desea enviar?');
+      us.state[0] = "doc";
+      selector(listaU, ctx);
+    }
+  });
+
   bot.action('registro', (ctx: Context) => {
-    consulta().query(`Select existe_usuario_eliminado(${ctx.from?.id})`).then(async (res: any) => {
-      if (!res.rows[0].existe_usuario) {
-        consulta().query(`Select existe_usuario_eliminado(${ctx.from?.id})`).then(async (res: any) => {
-          if (!res.rows[0].existe_usuario_eliminado) {
-            let us = getUsuario(ctx, ["clave", "introducir_clave"]);
-            listaU.push(us);
-            selector(listaU, ctx);
-          } else {
-            ctx.reply("Introduzca una clave de al menos 8 caracteres que contenga, al menos una letra y al menos un caracter. No puede empezar por @, # o / ");
-            let us = getUsuario(ctx, ["clave", "confirmar_clave"]);
-            us.admin = false;
-            listaU.push(us);
-            selector(listaU, ctx);
-          }
+    consulta().query(`Select existe_usuario(${ctx.from?.id})`).then(async (res: any) => {
+      if (res.rows[0].existe_usuario === 0) {
+        consulta().query(`Select existe_usuario(${ctx.from?.id})`).then(async (res: any) => {
+
+          let us = getUsuario(ctx, ["clave", "introducir_clave"]);
+          listaU.push(us);
+          selector(listaU, ctx);
+
         });
       } else {
-        ctx.reply(`Usted ya esta registrado`)
+        switch (res.rows[0].existe_usuario) {
+          case 3:
+            ctx.reply('Usted esta bloqueado. Presione el comando de /administradores para ver la lista de administradores y contactar a uno');
+            break;
+
+          case 1:
+            ctx.reply(`Usted ya esta registrado`)
+            break;
+
+          case 2:
+            ctx.reply(`Usted ya se ha registrado en el bot. Para iniciar una nueva cuenta preciones recuperar_crear_cuenta`);
+            break;
+        }
       }
     });
 
@@ -265,6 +393,7 @@ function inicializarBot() {
       us.state[1] = "rechazar_clave";
       selector(listaU, ctx);
     }
+    ctx.telegram.deleteMessage(us.idSMSClave.chat.id,us.idSMSClave.message_id);
   });
 
   bot.action('regular', (ctx: Context) => {
@@ -321,6 +450,7 @@ const getUsuario = (ctx: Context, sts: string[]) => {
     state: sts,
     password: " ",
     admin: false,
+    idSMSClave: "",
     producto: getProducto()
   }
 };
@@ -330,7 +460,7 @@ const getProducto = () => {
     precio: 0.0,
     cantidad: 0,
     id_prod: " ",
-    urlFoto: " ",
+    urlRecurso: " ",
     inicio: 0
   }
 };

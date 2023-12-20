@@ -11,4 +11,5 @@
  
 
 ///todo crear comando de modificar y ver direccion y modificar y ver reglas
-//todo enviar publicidad
+//todo poder capturar algunos errores 
+//todo terminar de validar el codigo
